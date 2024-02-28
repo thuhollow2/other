@@ -1,6 +1,23 @@
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+{
+    try
+    {
+        $scriptPath = $myInvocation.MyCommand.Definition
+        $scriptDirectory = Split-Path $scriptPath
+        Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -WorkingDirectory $scriptDirectory
+        exit
+    }
+    catch
+    {
+        Write-Error "Failed to start as administrator: $_"
+        exit
+    }
+}
+Set-Location -Path $PSScriptRoot
+
 Write-Host "This is a simple Windows PowerShell script to detect the validity of proxy nodes access to ChatGPT; it doesn't upload any information outside of the folder you use!"
 Start-Sleep -Seconds 1
-Write-Host "Script version: V1.1.0"
+Write-Host "Script version: V1.1.1"
 Start-Sleep -Seconds 1
 Write-Host "Abnormal exit of this program may retain some background processes, which will be cleaned up when the program is initialized."
 
@@ -22,7 +39,7 @@ $pass = Get-Random -Minimum 100000000000 -Maximum 999999999999
 $secret = Get-Random -Minimum 100000000000 -Maximum 999999999999
 $url_test = "https://chat.openai.com"
 $my_url = @'
-https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/myconfig/main/Proxy/proxy.yaml
+https://raw.githubusercontent.com/thuhollow2/myconfig/main/Proxy/proxy.yaml
 '@
 $lines = ($my_url | Where-Object {$_ }) -split "`r?`n"
 $processed = @()
@@ -134,12 +151,16 @@ Get-Process -Name process_hidden_clash -ErrorAction SilentlyContinue | Stop-Proc
 Get-Process -Name process_hidden_subconverter -ErrorAction SilentlyContinue | Stop-Process
 Get-Process -Name process_hidden_curl -ErrorAction SilentlyContinue | Stop-Process
 
+Get-NetFirewallRule | Where-Object { $_.DisplayName -like "Allow Inbound for process_hidden_*" -or $_.DisplayName -like "Allow Outbound for process_hidden_*" } | Remove-NetFirewallRule
+
 Write-Host "Initialization is complete! If you only want to shut down background processes, you can safely exit this program with your mouse or Ctrl + C, otherwise press any key to start the test."
 $key = [System.Console]::ReadKey($True)
 $esc=([char]27)
 Write-Host "The test is divided into three parts: <$esc[32mDownload Tools$esc[0m>, <$esc[32mDownload and Examine Subscription Files$esc[0m>, <$esc[32mTest Nodes$esc[0m>."
 Start-Sleep -Seconds 1
-Write-Host "If you $esc[31mhave already completed the first two parts and have saved your subscription urls in a folder$esc[0m, you can skip the complicated bootstrapping steps and start downloading and testing directly $esc[31mby using this folder$esc[0m with this option! [Y]|N"
+Write-Host "You can use a proxy or VPN in the first two parts to download the file."
+Start-Sleep -Seconds 1
+Write-Host "If you $esc[31mhave already completed the first two parts and have saved your subscription urls in the file (usually tools/file/url.txt),$esc[0m you can skip the complicated bootstrapping steps and start downloading and testing directly $esc[31mby using this folder$esc[0m with this option! [Y]|N"
 CapsLock_on
 while ($True) {
     if ([System.Console]::KeyAvailable) {
@@ -677,7 +698,7 @@ while ($True) {
                             } elseif ($key.Key -eq "B") {
                                 Write-Host "Your choice: "$key.Key
                                 Write-Host "Downloading clash! Please wait until the end of the process."
-                                try { $tag1 = (Invoke-RestMethod -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/clash.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
+                                try { $tag1 = (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/clash.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
                                 if ($tag1) {
                                     $tag1 | Out-File "$dir_fullpath\tools\version\clash.version" -Encoding UTF8
                                 } else {
@@ -685,7 +706,7 @@ while ($True) {
                                     Start-Sleep -Seconds 1
                                     break
                                 }
-                                try { Invoke-WebRequest -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/clash-$arch1.zip" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\clash-$arch1.zip" } catch {}
+                                try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/clash-$arch1.zip" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\clash-$arch1.zip" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\clash-$arch1.zip) { Expand-Archive -Path "$dir_fullpath\tools\download\clash-$arch1.zip" -DestinationPath "$dir_fullpath\tools\file" -Force }
                                 if (-not(Test-Path $dir_fullpath\tools\file\clash-$arch1.exe) -or -not(Test-Path $dir_fullpath\tools\version\clash.version)) {
                                     Write-Host "Failed to download! Please check the network."
@@ -784,7 +805,7 @@ while ($True) {
                             } elseif ($key.Key -eq "B") {
                                 Write-Host "Your choice: "$key.Key
                                 Write-Host "Downloading Country.mmdb! Please wait until the end of the process."
-                                try { $tag2 = (Invoke-RestMethod -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/Country.mmdb.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
+                                try { $tag2 = (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/Country.mmdb.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
                                 if ($tag2) {
                                     $tag2 | Out-File "$dir_fullpath\tools\version\Country.mmdb.version" -Encoding UTF8
                                 } else {
@@ -792,7 +813,7 @@ while ($True) {
                                     Start-Sleep -Seconds 1
                                     break
                                 }
-                                try { Invoke-WebRequest -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/Country.mmdb" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\Country.mmdb" } catch {}
+                                try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/Country.mmdb" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\Country.mmdb" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\Country.mmdb) { Copy-Item $dir_fullpath\tools\download\Country.mmdb $dir_fullpath\tools\file\Country.mmdb }
                                 if (-not(Test-Path $dir_fullpath\tools\file\Country.mmdb) -or -not(Test-Path $dir_fullpath\tools\version\Country.mmdb.version)) {
                                     Write-Host "Failed to download! Please check the network."
@@ -930,7 +951,7 @@ while ($True) {
                             } elseif ($key.Key -eq "B") {
                                 Write-Host "Your choice: "$key.Key
                                 Write-Host "Downloading subconverter! Please wait until the end of the process."
-                                try { $tag3 = (Invoke-RestMethod -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/subconverter.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
+                                try { $tag3 = (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/subconverter.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
                                 if ($tag3) {
                                     $tag3 | Out-File "$dir_fullpath\tools\version\subconverter.version" -Encoding UTF8
                                 } else {
@@ -938,7 +959,7 @@ while ($True) {
                                     Start-Sleep -Seconds 1
                                     break
                                 }
-                                try { Invoke-WebRequest -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/subconverter_$arch2.zip" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\subconverter_$arch2.zip" } catch {}
+                                try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/subconverter_$arch2.zip" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\subconverter_$arch2.zip" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\subconverter_$arch2.zip) {
                                     Expand-Archive -Path "$dir_fullpath\tools\download\subconverter_$arch2.zip" -DestinationPath "$dir_fullpath\tools\file" -Force
                                     Copy-Item $dir_fullpath\tools\file\subconverter\subconverter.exe $dir_fullpath\tools\file\subconverter.exe
@@ -988,7 +1009,7 @@ while ($True) {
         Start-Sleep -Seconds 1
         $tag4 = (Get-Content "$dir_fullpath\tools\version\rules.version" -Encoding UTF8).ToString().Trim()
         Write-Host "Rules.version: $tag4"
-        try { $tag4_update = (Invoke-RestMethod -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/rule/main/Clash/rules.version" -TimeoutSec $time_s2 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
+        try { $tag4_update = (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/thuhollow2/rule/main/Clash/rules.version" -TimeoutSec $time_s2 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
         if ($tag4_update -and $tag4_update -ne $tag4) {
             Write-Host "Detected an available update (version: $tag4_update)! Do you want to delete the current file and download the update? [Y]|N"
             CapsLock_on
@@ -1026,7 +1047,7 @@ while ($True) {
                 if ($key.Key -eq "Enter" -or $key.Key -eq "Y") {
                     Write-Host "Your choice: "$key.Key
                     Write-Host "Downloading rules! Please wait until the end of the process."
-                    try { $tag4 = (Invoke-RestMethod -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/rule/main/Clash/rules.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
+                    try { $tag4 = (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/thuhollow2/rule/main/Clash/rules.version" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection).ToString().Trim() } catch {}
                     if ($tag4) {
                         $tag4 | Out-File "$dir_fullpath\tools\version\rules.version" -Encoding UTF8
                     } else {
@@ -1034,13 +1055,13 @@ while ($True) {
                         Start-Sleep -Seconds 1
                         break
                     }
-                    try { Invoke-WebRequest -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/other/main/OpenAI.ini" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\OpenAI.ini" } catch {}
+                    try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/OpenAI.ini" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\OpenAI.ini" } catch {}
                     if (Test-Path $dir_fullpath\tools\download\OpenAI.ini) { Copy-Item $dir_fullpath\tools\download\OpenAI.ini $dir_fullpath\tools\file\OpenAI.ini }
                     if ((Test-Path $dir_fullpath\tools\file\OpenAI.ini) -and (Test-Path $dir_fullpath\tools\version\rules.version)) {
                         $rule_list = ((Get-Content "$dir_fullpath\tools\file\OpenAI.ini" -Encoding UTF8 | Where-Object {$_ -match '^ruleset=.*,\s*[^\s]*\.list$'}) -creplace '^ruleset=.*,\s*([^\s]*\.list)$', '$1') -split "`r?`n"
                         for ($i = 0; $i -lt $rule_list.Count; $i++) {
                             $line = $rule_list[$i]
-                            try { Invoke-WebRequest -Uri "https://gh.api.99988866.xyz/https://raw.githubusercontent.com/thuhollow2/rule/main/Clash/$line" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\$line" } catch {}
+                            try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/rule/main/Clash/$line" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\$line" } catch {}
                             if (Test-Path $dir_fullpath\tools\download\$line) {
                                 Copy-Item "$dir_fullpath\tools\download\$line" "$dir_fullpath\tools\rule\$line"
                             } else {
@@ -1252,7 +1273,7 @@ while ($True) {
                                     $i = 1
                                     $url_list = @()
                                     while ($True) {
-                                        Write-Host "Url ${i}: (Pressing 'Enter' directly will end the url input.)"
+                                        Write-Host "Url ${i}: (Pressing 'Enter' will end the url input.)"
                                         CapsLock_off
                                         $url = (Read-Host).ToString().Trim()
                                         if ($url) {
@@ -1795,7 +1816,11 @@ while ($True) {
             while ($True) {
                 Write-Host "Node filtering begins."
                 Copy-Item "$dir_fullpath\config\yaml2\config2.yaml" "$dir_fullpath\tools\tmp\config.yaml"
-                Start-Process -FilePath $clash -ArgumentList "-d $dir_fullpath\tools\tmp" -WindowStyle Hidden
+                New-NetFirewallRule -DisplayName "Allow Inbound for process_hidden_clash" -Direction Inbound -Program "$clash" -Action Allow -Profile Any | Out-Null
+                New-NetFirewallRule -DisplayName "Allow Outbound for process_hidden_clash" -Direction Outbound -Program "$clash" -Action Allow -Profile Any | Out-Null
+                New-NetFirewallRule -DisplayName "Allow Inbound for process_hidden_curl" -Direction Inbound -Program "$curl" -Action Allow -Profile Any | Out-Null
+                New-NetFirewallRule -DisplayName "Allow Outbound for process_hidden_curl" -Direction Outbound -Program "$curl" -Action Allow -Profile Any | Out-Null             
+                Start-Process -FilePath "$clash" -ArgumentList "-d $dir_fullpath\tools\tmp" -WindowStyle Hidden
                 $start = $sum1
                 while ($True)
                 {   
@@ -1827,6 +1852,7 @@ while ($True) {
                 }
                 Get-Process -Name process_hidden_curl -ErrorAction SilentlyContinue | Stop-Process
                 Get-Process -Name process_hidden_clash -ErrorAction SilentlyContinue | Stop-Process
+                Get-NetFirewallRule | Where-Object { $_.DisplayName -like "Allow Inbound for process_hidden_*" -or $_.DisplayName -like "Allow Outbound for process_hidden_*" } | Remove-NetFirewallRule
                 if (Test-Path "$dir_fullpath\tools\tmp\config.yaml") { Remove-Item -Path "$dir_fullpath\tools\tmp\config.yaml" -Force }
 
                 $log_match_lines = @()
@@ -1894,7 +1920,6 @@ $prefix + $e_content + $suffix3 + $f_content + $suffix4 | Out-File "$dir_fullpat
 
 $e_content = Get-Content "$dir_fullpath\tools\tmp\e.yaml" -Encoding UTF8
 $f_content = Get-Content "$dir_fullpath\tools\tmp\f.yaml" -Encoding UTF8
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 $used_ports = Get-NetTCPConnection | Select-Object -ExpandProperty LocalPort
 $available_ports = 3000..10000 | Where-Object { $used_ports -notcontains $_ } | Get-Random -Count $($clash_sum*2)
 for ($j = 1; $j -le $clash_sum; $j++) {
@@ -1905,6 +1930,8 @@ if (-not(Test-Path -PathType Container -Path "$dir_fullpath\tools\tmp\$j")) {
 }
 if (-not(Test-Path $dir_fullpath\tools\tmp\$j\process_hidden_clash.exe)) { Copy-Item $dir_fullpath\tools\file\clash-$arch1.exe $dir_fullpath\tools\tmp\$j\process_hidden_clash.exe }
 if (-not(Test-Path $dir_fullpath\tools\tmp\$j\Country.mmdb)) { Copy-Item $dir_fullpath\tools\file\Country.mmdb $dir_fullpath\tools\tmp\$j\Country.mmdb }
+New-NetFirewallRule -DisplayName "Allow Inbound for process_hidden_clash_$j" -Direction Inbound -Program "$dir_fullpath\tools\tmp\$j\process_hidden_clash.exe" -Action Allow -Profile Any | Out-Null
+New-NetFirewallRule -DisplayName "Allow Outbound for process_hidden_clash_$j" -Direction Outbound -Program "$dir_fullpath\tools\tmp\$j\process_hidden_clash.exe" -Action Allow -Profile Any | Out-Null
 $ui_port = $available_ports[$($j*2 - 1)]
 $proxy_port = $available_ports[$($j*2)]
 $prefix = @"
@@ -1978,6 +2005,7 @@ while ($True)
 {   
     if ((Get-ChildItem -Path "$dir_fullpath\tools\tmp" -Filter "g*.yaml").Count -ge $clash_sum -and (Get-Process -Name process_hidden_clash -ErrorAction SilentlyContinue).Count -eq 0) {
         Get-Process -Name process_hidden_curl -ErrorAction SilentlyContinue | Stop-Process
+        Get-NetFirewallRule | Where-Object { $_.DisplayName -like "Allow Inbound for process_hidden_*" -or $_.DisplayName -like "Allow Outbound for process_hidden_*" } | Remove-NetFirewallRule
         break
     } else {
         Start-Sleep -Seconds 2
@@ -1997,7 +2025,10 @@ foreach ($line in $config_content) {
 if ($match_lines | Where-Object {$_ -match '^  - \{name: '}) {
     $match_lines | Out-File "$dir_fullpath\config\yaml3\config1.yaml" -Encoding UTF8
     Write-Host "Names of the nodes that passed the test are as follows:"
+    $originalEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     ($match_lines | Where-Object {$_ -match '^  - \{name: '}) -creplace '^  - \{name: (.*?), server: .*$', '$1'
+    [Console]::OutputEncoding = $originalEncoding
     if ($mode -eq 0) { Start-Sleep -Seconds 1 }
     if ((Get-Content "$dir_fullpath\config\yaml2\config1.yaml" -Encoding UTF8 | Where-Object {$_ -match "^  - \{name: ['`"]*<[^>]*> .*, server: "}).Count -ne 0) {
         Write-Host "Here are the statistics for the nodes that passed the test:"
