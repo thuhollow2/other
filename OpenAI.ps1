@@ -17,7 +17,7 @@ Set-Location -Path $PSScriptRoot
 
 Write-Host "This is a simple Windows PowerShell script to detect the validity of proxy nodes access to ChatGPT; it doesn't upload any information outside of the folder you use!"
 Start-Sleep -Seconds 1
-Write-Host "Script version: V1.1.1"
+Write-Host "Script version: V1.2.0"
 Start-Sleep -Seconds 1
 Write-Host "Abnormal exit of this program may retain some background processes, which will be cleaned up when the program is initialized."
 
@@ -49,6 +49,16 @@ foreach ($line in $lines) {
     }
 }
 $my_url = $processed -join [environment]::NewLine
+$test_ps1 = @"
+param(
+    [string]`$dir_fullpath_test
+)
+try {
+    `$null = New-Item -ItemType Directory -Path `$dir_fullpath_test -ErrorAction Stop
+}
+catch {
+}
+"@
 $prefix = @"
 mixed-port: $proxy_port
 allow-lan: false
@@ -182,13 +192,16 @@ Write-Host "Part I: <$esc[32mDownload Tools$esc[0m>"
 if ($mode -eq 0) { Start-Sleep -Seconds 1 }
 $dir_path = (Get-Location).Path
 $dir_path_test = Join-Path -Path $dir_path -ChildPath "test_test_test_test_test_test_test_test"
-try {
-    $null = New-Item -ItemType Directory -Path $dir_path_test -ErrorAction Stop
+$dir_path_test_ps1 = Join-Path -Path $dir_path -ChildPath "TestTestTestTest.ps1"
+$test_ps1 | Out-File "$dir_path_test_ps1" -Encoding UTF8
+$command_runas = "powershell.exe -File `"$dir_path_test_ps1`" -dir_fullpath_test `"$dir_path_test`""
+Start-Process -FilePath "runas.exe" -ArgumentList "/trustlevel:0x20000 `"$command_runas`"" -Wait -WindowStyle Hidden
+if (Test-Path $dir_path_test) {
     $dir_path_value = 1
-}
-catch {
+} else {
     $dir_path_value = 0
 }
+if (Test-Path $dir_path_test_ps1) { Remove-Item -Path $dir_path_test_ps1 -Force }
 if (Test-Path $dir_path_test) { Remove-Item -Path $dir_path_test -Force -Recurse }
 Write-Host "You are currently in $dir_path."
 if ($mode -eq 0) { Start-Sleep -Seconds 1 }
@@ -242,13 +255,15 @@ while ($True) {
                             }
                         } elseif (-not(Test-Path $dir_path_test) -and -not($dir_path_empty) -and $dir_fullpath_value -ne 3 ) {
                             $dir_path_empty = $dir_path_test
-                            try {
-                                $null = New-Item -ItemType Directory -Path $dir_fullpath_test -ErrorAction Stop
+                            $test_ps1 | Out-File "$dir_path_test_ps1" -Encoding UTF8
+                            $command_runas = "powershell.exe -File `"$dir_path_test_ps1`" -dir_fullpath_test `"$dir_fullpath_test`""
+                            Start-Process -FilePath "runas.exe" -ArgumentList "/trustlevel:0x20000 `"$command_runas`"" -Wait -WindowStyle Hidden
+                            if (Test-Path $dir_path_test) {
                                 $dir_fullpath_value = 1
-                            }
-                            catch {
+                            } else {
                                 $dir_fullpath_value = 0
                             }
+                            if (Test-Path $dir_path_test_ps1) { Remove-Item -Path $dir_path_test_ps1 -Force }
                             if (Test-Path $dir_path_empty) { Remove-Item -Path $dir_path_empty -Force -Recurse }
                         }
                         $dir_path_test_real = Join-Path -Path $dir_path_test_real -ChildPath $dir_path_test_name
@@ -317,7 +332,7 @@ while ($True) {
                     } elseif ($dir_fullpath -ceq $dir_path) {
                         Write-Host "Warning! The input is empty, $dir_path will be used directly as the storage folder."
                         if ($mode -eq 0) { Start-Sleep -Seconds 1 }
-                        Write-Host "If you want to use this path, please save the files in the following folder in time:"
+                        Write-Host "If you want to use this path, please save the files in the following folders in time:"
                         $dir_fullpath = $dir_fullpath.TrimEnd('\')
                         $files_preview = "$dir_fullpath\config\`n$dir_fullpath\config\yaml1\`n$dir_fullpath\config\yaml2\`n$dir_fullpath\config\yaml3\`n$dir_fullpath\tools\download\`n$dir_fullpath\tools\version\`n$dir_fullpath\tools\file\`n$dir_fullpath\tools\rule\`n$dir_fullpath\tools\tmp\"
                         $files_preview
@@ -348,7 +363,7 @@ while ($True) {
                     } else {
                         Write-Host "The path $dir_fullpath you entered is valid."
                         if ($mode -eq 0) { Start-Sleep -Seconds 1 }
-                        Write-Host "If you want to use this path, please save the files in the following folder in time:"
+                        Write-Host "If you want to use this path, please save the files in the following folders in time:"
                         $dir_fullpath = $dir_fullpath.TrimEnd('\')
                         $files_preview = "$dir_fullpath\config\`n$dir_fullpath\config\yaml1\`n$dir_fullpath\config\yaml2\`n$dir_fullpath\config\yaml3\`n$dir_fullpath\tools\download\`n$dir_fullpath\tools\version\`n$dir_fullpath\tools\file\`n$dir_fullpath\tools\rule\`n$dir_fullpath\tools\tmp\"
                         $files_preview
@@ -389,7 +404,7 @@ while ($True) {
                 }
                 break
             } elseif ($dir_path_value -eq 0 -or $path_value -eq 3 -or ($path_value -eq 9 -and $key.Key -eq "B")) {
-                if ($path_value -eq 9) { Write-Host "Your choice: "$key.Key }
+                if ($dir_path_value -eq 1 -and $path_value -eq 9) { Write-Host "Your choice: "$key.Key }
                 $path_value = 2
                 while ($True) {
                     Write-Host "Please enter the full path to the folder you want to use or create such as D:\myconfig."
@@ -431,13 +446,15 @@ while ($True) {
                                 }
                             } elseif (-not(Test-Path $dir_path_test) -and -not($dir_path_empty) -and $dir_fullpath_value -ne 3 ) {
                                 $dir_path_empty = $dir_path_test
-                                try {
-                                    $null = New-Item -ItemType Directory -Path $dir_fullpath_test -ErrorAction Stop
+                                $test_ps1 | Out-File "$dir_path_test_ps1" -Encoding UTF8
+                                $command_runas = "powershell.exe -File `"$dir_path_test_ps1`" -dir_fullpath_test `"$dir_fullpath_test`""
+                                Start-Process -FilePath "runas.exe" -ArgumentList "/trustlevel:0x20000 `"$command_runas`"" -Wait -WindowStyle Hidden
+                                if (Test-Path $dir_path_test) {
                                     $dir_fullpath_value = 1
-                                }
-                                catch {
+                                } else {
                                     $dir_fullpath_value = 0
                                 }
+                                if (Test-Path $dir_path_test_ps1) { Remove-Item -Path $dir_path_test_ps1 -Force }
                                 if (Test-Path $dir_path_empty) { Remove-Item -Path $dir_path_empty -Force -Recurse }
                             }
                             $dir_path_test_real = Join-Path -Path $dir_path_test_real -ChildPath $dir_path_test_name
@@ -684,14 +701,14 @@ while ($True) {
                                 if ($tag1) {
                                     $tag1 | Out-File "$dir_fullpath\tools\version\clash.version" -Encoding UTF8
                                 } else {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                     break
                                 }
                                 try { Invoke-WebRequest -Uri "https://github.com/Dreamacro/clash/releases/download/$tag1/clash-$arch1-$tag1.zip" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\clash-$arch1-$tag1.zip" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\clash-$arch1-$tag1.zip) { Expand-Archive -Path "$dir_fullpath\tools\download\clash-$arch1-$tag1.zip" -DestinationPath "$dir_fullpath\tools\file" -Force }
                                 if (-not(Test-Path $dir_fullpath\tools\file\clash-$arch1.exe) -or -not(Test-Path $dir_fullpath\tools\version\clash.version)) {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                 }
                                 break
@@ -702,14 +719,14 @@ while ($True) {
                                 if ($tag1) {
                                     $tag1 | Out-File "$dir_fullpath\tools\version\clash.version" -Encoding UTF8
                                 } else {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                     break
                                 }
                                 try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/clash-$arch1.zip" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\clash-$arch1.zip" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\clash-$arch1.zip) { Expand-Archive -Path "$dir_fullpath\tools\download\clash-$arch1.zip" -DestinationPath "$dir_fullpath\tools\file" -Force }
                                 if (-not(Test-Path $dir_fullpath\tools\file\clash-$arch1.exe) -or -not(Test-Path $dir_fullpath\tools\version\clash.version)) {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                 }
                                 break
@@ -791,14 +808,14 @@ while ($True) {
                                 if ($tag2) {
                                     $tag2 | Out-File "$dir_fullpath\tools\version\Country.mmdb.version" -Encoding UTF8
                                 } else {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                     break
                                 }
                                 try { Invoke-WebRequest -Uri "https://github.com/alecthw/mmdb_china_ip_list/releases/download/$tag2/Country.mmdb" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\Country.mmdb" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\Country.mmdb) { Copy-Item $dir_fullpath\tools\download\Country.mmdb $dir_fullpath\tools\file\Country.mmdb }
                                 if (-not(Test-Path $dir_fullpath\tools\file\Country.mmdb) -or -not(Test-Path $dir_fullpath\tools\version\Country.mmdb.version)) {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                 }
                                 break
@@ -809,14 +826,14 @@ while ($True) {
                                 if ($tag2) {
                                     $tag2 | Out-File "$dir_fullpath\tools\version\Country.mmdb.version" -Encoding UTF8
                                 } else {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                     break
                                 }
                                 try { Invoke-WebRequest -Uri "https://raw.githubusercontent.com/thuhollow2/other/main/Country.mmdb" -TimeoutSec $time_s1 -MaximumRedirection $max_redirection -OutFile "$dir_fullpath\tools\download\Country.mmdb" } catch {}
                                 if (Test-Path $dir_fullpath\tools\download\Country.mmdb) { Copy-Item $dir_fullpath\tools\download\Country.mmdb $dir_fullpath\tools\file\Country.mmdb }
                                 if (-not(Test-Path $dir_fullpath\tools\file\Country.mmdb) -or -not(Test-Path $dir_fullpath\tools\version\Country.mmdb.version)) {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                 }
                                 break
@@ -896,16 +913,14 @@ while ($True) {
                                 Write-Host "Your choice: "$key.Key
                                 while ($True) {
                                     if (-not(Get-Module -Name 7Zip4Powershell -ListAvailable)) {
-                                        Write-Host "Module 7Zip4Powershell is not installed! Do you want to install it with administrator rights? [Y]|N"
+                                        Write-Host "Module 7Zip4Powershell is not installed! Do you want to install it automatically? [Y]|N"
                                         CapsLock_on
                                         while ($True) {
                                             if ([System.Console]::KeyAvailable) {
                                                 $key = [System.Console]::ReadKey($True)
                                                 if ($key.Key -eq "Enter" -or $key.Key -eq "Y") {
                                                     Write-Host "Your choice: "$key.Key
-                                                    Write-Host "Please allow Windows PowerShell to make changes to install Module 7Zip4Powershell and wait for the new window to close. Press 'Enter' to start."
-                                                    Read-Host
-                                                    Start-Process powershell -Verb RunAs -Wait -ArgumentList "-Command Install-Module -Name 7Zip4Powershell -Force"
+                                                    Install-Module -Name 7Zip4Powershell -Force
                                                     if (-not(Get-Module -Name 7Zip4Powershell -ListAvailable)) {
                                                         Write-Host "Failed to install! If the installation of Module 7Zip4Powershell always fails, please choose (Backup) to download and extract the latest subconverter_$arch2.zip automatically or do it manually via (Source) or (Backup) url."
                                                         Start-Sleep -Seconds 1
@@ -934,7 +949,7 @@ while ($True) {
                                 if ($tag3) {
                                     $tag3 | Out-File "$dir_fullpath\tools\version\subconverter.version" -Encoding UTF8
                                 } else {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                     break
                                 }
@@ -944,7 +959,7 @@ while ($True) {
                                     Copy-Item $dir_fullpath\tools\file\subconverter\subconverter.exe $dir_fullpath\tools\file\subconverter.exe
                                 }
                                 if (-not(Test-Path $dir_fullpath\tools\file\subconverter.exe) -or -not(Test-Path $dir_fullpath\tools\version\subconverter.version)) {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                 }
                                 break
@@ -955,7 +970,7 @@ while ($True) {
                                 if ($tag3) {
                                     $tag3 | Out-File "$dir_fullpath\tools\version\subconverter.version" -Encoding UTF8
                                 } else {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                     break
                                 }
@@ -965,7 +980,7 @@ while ($True) {
                                     Copy-Item $dir_fullpath\tools\file\subconverter\subconverter.exe $dir_fullpath\tools\file\subconverter.exe
                                 }
                                 if (-not(Test-Path $dir_fullpath\tools\file\subconverter.exe) -or -not(Test-Path $dir_fullpath\tools\version\subconverter.version)) {
-                                    Write-Host "Failed to download! Please check the network."
+                                    Write-Host "Failed to download! Please check the network or the repository."
                                     Start-Sleep -Seconds 1
                                 }
                                 break
@@ -1051,7 +1066,7 @@ while ($True) {
                     if ($tag4) {
                         $tag4 | Out-File "$dir_fullpath\tools\version\rules.version" -Encoding UTF8
                     } else {
-                        Write-Host "Failed to download! Please check the network."
+                        Write-Host "Failed to download! Please check the network or the repository."
                         Start-Sleep -Seconds 1
                         break
                     }
@@ -1065,7 +1080,7 @@ while ($True) {
                             if (Test-Path $dir_fullpath\tools\download\$line) {
                                 Copy-Item "$dir_fullpath\tools\download\$line" "$dir_fullpath\tools\rule\$line"
                             } else {
-                                Write-Host "Failed to download! Please check the network."
+                                Write-Host "Failed to download! Please check the network or the repository."
                                 Start-Sleep -Seconds 1
                                 break
                             }
